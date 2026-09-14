@@ -258,12 +258,7 @@ class VoxtypeOSD:
 
         self.position_window()
         self.window.show_all()
-        try:
-            gdk_win = self.window.get_window()
-            if gdk_win is not None:
-                gdk_win.input_shape_combine_region(Gdk.Region(), 0, 0)
-        except Exception:
-            pass
+        self.enable_click_through()
         # JANELA SEMPRE MAPEADA: mostrar/esconder (map/unmap) faz o compositor
         # mexer no foco (o texto caía em outra janela). Idle = conteúdo
         # transparente; o desenho só aparece em recording/transcribing.
@@ -272,6 +267,25 @@ class VoxtypeOSD:
         threading.Thread(target=self.watch_state, daemon=True).start()
         threading.Thread(target=self.watch_audio, daemon=True).start()
         GLib.timeout_add(FRAME_MS, self.on_tick)
+
+    def enable_click_through(self):
+        """Input region vazia: cliques/scroll atravessam a pílula inteira.
+
+        `Gdk.Region` NÃO existe no PyGObject do GTK3 (o tipo é `cairo.Region`);
+        o AttributeError resultante era engolido pelo `except` e a janela ficava
+        com input region cheia — bloqueando cliques e a rolagem dos apps por
+        baixo (ex.: barra de controles do YouTube em tela cheia), mesmo com o
+        OSD invisível. `set_pass_through` é no-op no X11 deste GTK, então a
+        chamada que vale é a da região vazia."""
+        try:
+            gdk_win = self.window.get_window()
+            if gdk_win is None:
+                return
+            gdk_win.input_shape_combine_region(cairo.Region(), 0, 0)
+            if hasattr(gdk_win, "set_pass_through"):
+                gdk_win.set_pass_through(True)
+        except Exception as e:
+            print(f"francosvox-osd: click-through falhou: {e}", file=sys.stderr)
 
     def position_window(self):
         try:
