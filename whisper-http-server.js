@@ -10,6 +10,9 @@ const path = require('path');
 
 const execFileAsync = promisify(execFile);
 const PORT = process.env.WHISPER_PORT || 3003;
+// Escuta só em localhost por padrão: o endpoint não tem autenticação e não
+// deve ficar exposto na rede. Para expor de propósito, WHISPER_HOST=0.0.0.0.
+const HOST = process.env.WHISPER_HOST || '127.0.0.1';
 const MAX_QUEUE = 5;
 
 // Resolve o binário com GPU. Em instalações .deb o /usr/bin/voxtype é um
@@ -105,4 +108,4 @@ const server = http.createServer((req, res) => {
   res.writeHead(404); res.end();
 });
 
-server.listen(PORT, '0.0.0.0', () => console.log(`[whisper-http] ouvindo em :${PORT}`));
+server.listen(PORT, HOST, () => console.log(`[whisper-http] ouvindo em ${HOST}:${PORT}`));

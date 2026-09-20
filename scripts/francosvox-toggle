@@ -126,6 +126,8 @@ case "$state" in
         # inicia antes. O foco permanece onde está (o OSD fica no topo e é
         # click-through) — não precisa reclicar na caixa de diálogo.
         if ! ensure_daemon; then
+            # Libera o debounce: o usuário pode tentar de novo na hora
+            rm -f "$DEBOUNCE_FILE" 2>/dev/null || true
             exit 1
         fi
         exec "$VOXTYPE_BIN" record start

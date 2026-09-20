@@ -19,10 +19,7 @@
 # =============================================================================
 set -u
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-USER_NAME="$(id -un)"
-USER_GROUP="$(id -gn)"
+REPO_URL="https://github.com/FrancosCorporation/FrancosVox.git"
 TRANSLATOR_DIR="$HOME/.local/voxtype-translator"
 VOXTYPE_DEB_URL="https://github.com/woheller69/voxtype/releases/latest/download/voxtype_amd64.deb"
 
@@ -39,8 +36,36 @@ need_sudo() {
 }
 
 info "=== FrancosVox — instalador completo ==="
-info "Usuário: $USER_NAME | Repo: $ROOT_DIR"
 [ "$(uname -m)" = "x86_64" ] || die "Este instalador suporta x86_64 (seu sistema: $(uname -m))"
+
+# ---------------------------------------------------------------------------
+# 0) Bootstrap: rodando sem checkout (curl | bash / bash -c), clona e re-executa
+#    Sem isso, `${BASH_SOURCE[0]}` nem existe sob `set -u` e o comando "tudo em
+#    um" do README falhava antes de instalar qualquer coisa.
+# ---------------------------------------------------------------------------
+SCRIPT_DIR=""
+if [ -n "${BASH_SOURCE[0]:-}" ]; then
+    _dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)"
+    [ -f "$_dir/apply.sh" ] && SCRIPT_DIR="$_dir"
+fi
+if [ -z "$SCRIPT_DIR" ]; then
+    info "[0/5] Sem checkout local — preparando o repositório..."
+    need_sudo
+    command -v git >/dev/null 2>&1 || sudo apt-get install -y -qq git || die "Falha ao instalar o git"
+    REPO_DIR="${FRANCOSVOX_DIR:-$HOME/Git/voxtype-br}"
+    if [ -d "$REPO_DIR/.git" ]; then
+        git -C "$REPO_DIR" pull --ff-only 2>/dev/null || warn "Não consegui atualizar o repo — usando o existente."
+    else
+        mkdir -p "$(dirname "$REPO_DIR")"
+        git clone --depth 1 "$REPO_URL" "$REPO_DIR" || die "Falha ao clonar $REPO_URL"
+    fi
+    exec bash "$REPO_DIR/scripts/install.sh"
+fi
+
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+USER_NAME="$(id -un)"
+USER_GROUP="$(id -gn)"
+info "Usuário: $USER_NAME | Repo: $ROOT_DIR"
 
 need_sudo
 

@@ -16,12 +16,12 @@ if [ -f ~/.config/voxtype/config.toml ]; then
     # Preserva a escolha de idiomas do usuário ao instalar a config nova
     # (senão o auto-update no login apagaria a seleção de entrada/saída).
     python3 - "$ROOT_DIR/config/config.toml" <<'PYEOF'
-import re, sys
+import os, re, sys
 new = sys.argv[1]
 keys = ("source_language", "target_language", "language", "translate")
 vals = {}
 try:
-    for line in open("/home/servidor/.config/voxtype/config.toml"):
+    for line in open(os.path.expanduser("~/.config/voxtype/config.toml")):
         m = re.match(r"^\s*(" + "|".join(keys) + r")\s*=\s*\"?([^\"\s#]+)", line)
         if m:
             vals[m.group(1)] = m.group(2)
@@ -49,11 +49,12 @@ cp "$ROOT_DIR/bin/francosvox-osd" ~/.local/bin/francosvox-osd
 cp "$ROOT_DIR/scripts/francosvox-toggle" ~/.local/bin/francosvox-toggle
 cp "$ROOT_DIR/scripts/francosvox-type" ~/.local/bin/francosvox-type
 cp "$ROOT_DIR/scripts/francosvox-settings" ~/.local/bin/francosvox-settings
+cp "$ROOT_DIR/scripts/francosvox-keybinding" ~/.local/bin/francosvox-keybinding
 cp "$ROOT_DIR/scripts/francosvox-keys-reset" ~/.local/bin/francosvox-keys-reset
 cp "$ROOT_DIR/scripts/francosvox-tray" ~/.local/bin/francosvox-tray
 cp "$ROOT_DIR/scripts/francosvox-translate-start" ~/.local/bin/francosvox-translate-start
 cp "$ROOT_DIR/scripts/notify-send-shim" ~/.local/bin/notify-send
-chmod +x ~/.local/bin/francosvox-osd ~/.local/bin/francosvox-toggle ~/.local/bin/francosvox-type ~/.local/bin/francosvox-settings ~/.local/bin/francosvox-keys-reset ~/.local/bin/francosvox-tray ~/.local/bin/francosvox-translate-start ~/.local/bin/notify-send
+chmod +x ~/.local/bin/francosvox-osd ~/.local/bin/francosvox-toggle ~/.local/bin/francosvox-type ~/.local/bin/francosvox-settings ~/.local/bin/francosvox-keybinding ~/.local/bin/francosvox-keys-reset ~/.local/bin/francosvox-tray ~/.local/bin/francosvox-translate-start ~/.local/bin/notify-send
 
 # Limpeza de nomes antigos (voxtype-*) + symlink exigido pelo daemon:
 # o binário do Voxtype procura o OSD pelo nome hardcoded "voxtype-osd" no PATH.
@@ -115,7 +116,7 @@ cat > ~/.config/autostart/francosvox.desktop <<EOF
 Type=Application
 Name=FrancosVox
 Comment=Daemon de ditado por voz com GPU (Ctrl+Shift+Espaço)
-Exec=bash -c 'for i in {1..30}; do systemctl --user is-active ydotoold >/dev/null 2>&1 && break; sleep 1; done; exec bash $ROOT_DIR/scripts/francosvox-start'
+Exec=bash -c 'for i in {1..30}; do pgrep -x ydotoold >/dev/null 2>&1 && break; sleep 1; done; exec bash $ROOT_DIR/scripts/francosvox-start'
 X-GNOME-Autostart-enabled=true
 NoDisplay=true
 EOF

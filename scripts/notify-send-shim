@@ -17,13 +17,13 @@ i=0
 while [ $i -lt ${#args[@]} ]; do
     a="${args[$i]}"
     case "$a" in
-        --app-name=*oxtype*|--app-name=*Oxtype*)
+        --app-name=*oxtype*|--app-name=*Oxtype*|--app-name=*Franco*|--app-name=*franco*)
             voxtype=1
             ;;
         -a|--app-name)
             if [ $((i + 1)) -lt ${#args[@]} ]; then
                 case "${args[$((i + 1))]}" in
-                    *oxtype*|*Oxtype*) voxtype=1 ;;
+                    *oxtype*|*Oxtype*|*Franco*|*franco*) voxtype=1 ;;
                 esac
             fi
             ;;

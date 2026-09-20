@@ -5,21 +5,20 @@ set -e
 
 SHORTCUT_NAME="FrancosVox Ditado"
 SHORTCUT_BINDING="<Ctrl><Shift>space"
-BASE="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KEYBINDING="$SCRIPT_DIR/francosvox-keybinding"
 
 # Instala o wrapper (debounce + trava durante transcrição) no PATH do usuário
 mkdir -p "$HOME/.local/bin"
 cp "$SCRIPT_DIR/francosvox-toggle" "$HOME/.local/bin/francosvox-toggle"
-chmod +x "$HOME/.local/bin/francosvox-toggle"
+cp "$SCRIPT_DIR/francosvox-keybinding" "$HOME/.local/bin/francosvox-keybinding"
+chmod +x "$HOME/.local/bin/francosvox-toggle" "$HOME/.local/bin/francosvox-keybinding"
 SHORTCUT_CMD="$HOME/.local/bin/francosvox-toggle"
 
 echo "🎯 Configurando atalho: Ctrl+Shift+Espaço → $SHORTCUT_CMD"
 
-gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/']"
-gsettings set "$BASE" name "$SHORTCUT_NAME"
-gsettings set "$BASE" command "$SHORTCUT_CMD"
-gsettings set "$BASE" binding "$SHORTCUT_BINDING"
+# O helper MESCLA na lista de custom-keybindings (não apaga os atalhos do usuário)
+python3 "$KEYBINDING" set "$SHORTCUT_BINDING"
 
 echo "✅ Atalho configurado!"
 echo "   $SHORTCUT_NAME: Ctrl+Shift+Espaço"

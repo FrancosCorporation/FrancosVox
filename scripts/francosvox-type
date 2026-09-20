@@ -25,6 +25,7 @@ RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/voxtype"
 STATE_FILE="$RUNTIME_DIR/state"
 TRANS_FILE="/tmp/francosvox-transcript.txt"
 KEYS_RESET="$HOME/.local/bin/francosvox-keys-reset"
+MODE_FILE="$HOME/.config/voxtype/output_mode"
 
 # Traduz via libretranslate local (127.0.0.1:5000). Par direto quando existe;
 # senão cadeia <src> -> en -> <tgt>. Retorna vazio se o servidor não respondeu.
@@ -57,14 +58,17 @@ if out:
 PYEOF
 }
 
-# Aguarda o daemon terminar (estado idle = transcrição gravada e OSD escondido)
-for _ in $(seq 1 150); do
+# Aguarda o daemon terminar (estado idle = transcrição gravada e OSD escondido).
+# Espera até ~120s: na CPU a transcrição do large-v3-turbo pode passar de 30s,
+# e antes o script desistia cedo e descartava a colagem.
+START_TS=$(date +%s)
+for _ in $(seq 1 600); do
     st=""
     [ -f "$STATE_FILE" ] && st=$(tr -d '[:space:]' < "$STATE_FILE" 2>/dev/null || true)
     [ "$st" = "idle" ] && break
     sleep 0.2
 done
-echo "estado final: ${st:-desconhecido}"
+echo "estado final: ${st:-desconhecido} (após $(( $(date +%s) - START_TS ))s)"
 
 sleep 0.8  # margem: foco volta, OSD esconde de vez
 
@@ -74,10 +78,12 @@ if [ ! -f "$TRANS_FILE" ]; then
     exit 1
 fi
 
-# Só cola se o arquivo é recente (transcrição deste ditado, não de outro)
-age=$(( $(date +%s) - $(stat -c %Y "$TRANS_FILE" 2>/dev/null || echo 0) ))
-echo "idade do arquivo: ${age}s"
-if [ "$age" -ge 30 ]; then
+# Só cola se o arquivo foi escrito NESTE ditado (mtime depois do início do
+# script). Substitui o antigo "idade < 30s", que descartava transcrições
+# demoradas (CPU) e aceitava arquivo de outro ditado feito há pouco.
+mtime=$(stat -c %Y "$TRANS_FILE" 2>/dev/null || echo 0)
+echo "mtime do transcript: $mtime (início: $START_TS)"
+if [ "$mtime" -lt $((START_TS - 1)) ]; then
     echo "arquivo antigo, ignorando"
     [ -x "$KEYS_RESET" ] && bash "$KEYS_RESET"
     exit 0
@@ -124,6 +130,22 @@ fi
 export XKB_DEFAULT_LAYOUT=br
 export XKB_DEFAULT_VARIANT=abnt2
 
+# Modo de inserção escolhido no painel FrancosVox (paste = instantâneo,
+# type = digita visivelmente). Antes o painel gravava esse arquivo e ninguém
+# o lia — o switch não tinha efeito.
+mode="$(tr -d '[:space:]' < "$MODE_FILE" 2>/dev/null || true)"
+[ "$mode" = "type" ] || mode="paste"
+echo "modo de inserção: $mode"
+
+if [ "$mode" = "type" ]; then
+    # Digitação visível, tecla a tecla (requer o layout ABNT2 exportado acima)
+    /usr/bin/ydotool type --key-delay 25 -- "$text" 2>/dev/null || true
+    sleep 0.2
+    [ -x "$KEYS_RESET" ] && bash "$KEYS_RESET"
+    echo "=== fim ==="
+    exit 0
+fi
+
 # 1) Copia para o clipboard (com retry + verificação)
 ok=0
 for try in 1 2 3; do
@@ -147,7 +169,7 @@ if [ "$ok" = 1 ]; then
 else
     # Plano B: digitação visível
     echo "wl-copy falhou — plano B: digitação"
-    /usr/bin/ydotool type --key-delay 25 "$text" 2>/dev/null || true
+    /usr/bin/ydotool type --key-delay 25 -- "$text" 2>/dev/null || true
 fi
 
 # 2) SEMPRE libera as teclas (tecla presa = teclado travado do usuário)

@@ -78,6 +78,7 @@ a caixa de diálogo e **não rouba o foco**:
 | `scripts/francosvox-toggle` | Wrapper do atalho: debounce, trava na transcrição, auto-recuperação do daemon |
 | `scripts/francosvox-type` | **Cola a transcrição** (wl-copy + Ctrl+Shift+V por keycodes) e **traduz antes de colar** quando a saída é outro idioma |
 | `scripts/francosvox-settings` | Painel de configuração: **entrada** (o que você fala) + **saída** (tradução), colar instantâneo × digitar — busque "FrancosVox" no menu |
+| `scripts/francosvox-keybinding` | Aplica o atalho global **mesclando** na lista do GNOME (não apaga outros atalhos personalizados) |
 | `scripts/francosvox-tray` | **Ícone na barra superior** (topo, ao lado do Bluetooth): estado 🎙/🎤/⏳, menu Configurações/Reiniciar daemon/Sair |
 | `scripts/francosvox-translate-start` | Garante o tradutor local (LibreTranslate :5000) **sob demanda** — watchdog encerra após 10 min ocioso (libera RAM) |
 | `scripts/francosvox-keys-reset` | Libera teclas injetadas que ficaram presas (anti-tecla-presa) |

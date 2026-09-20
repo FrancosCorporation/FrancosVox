@@ -28,8 +28,8 @@ MODE_FILE = os.path.join(CONFIG_DIR, "output_mode")
 REPO_PATH_FILE = os.path.expanduser("~/.local/share/francosvox/repo_path")
 RUNTIME_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"), "voxtype")
 
-GNOME_CUSTOMS = "org.gnome.settings-daemon.plugins.media-keys"
 GNOME_BASE = "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+KEYBINDING_HELPER = os.path.expanduser("~/.local/bin/francosvox-keybinding")
 
 LANGUAGES = [
     ("pt", "Português (Brasil)"),
@@ -68,8 +68,26 @@ def gsettings_get(key, base=GNOME_BASE):
         return None
 
 
-def gsettings_set(key, value, base=GNOME_BASE):
-    subprocess.run(["gsettings", "set", base, key, value], check=False)
+def keybinding_get():
+    """Binding atual do FrancosVox (o helper acha/reaproveita o slot certo)."""
+    try:
+        out = subprocess.run(
+            [KEYBINDING_HELPER, "get"], capture_output=True, text=True, timeout=5)
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
+    except Exception:
+        pass
+    return gsettings_get("binding")
+
+
+def keybinding_set(binding):
+    """Grava o atalho MESCLANDO na lista (não apaga os outros atalhos)."""
+    try:
+        return subprocess.run(
+            [KEYBINDING_HELPER, "set", binding], timeout=10).returncode == 0
+    except Exception as e:
+        print(f"francosvox-settings: atalho não aplicado: {e}", file=sys.stderr)
+        return False
 
 
 def read_config_value(section, key):
@@ -184,7 +202,7 @@ class HotkeyCapture(Gtk.Entry):
         self.connect("button-press-event", self.on_click)
         self.connect("key-press-event", self.on_key_press)
         self.connect("key-release-event", self.on_key_release)
-        self.set_current(gsettings_get("binding") or "<Ctrl><Shift>space")
+        self.set_current(keybinding_get() or "<Ctrl><Shift>space")
 
     def set_current(self, binding):
         self.set_text(binding or "")
@@ -341,15 +359,10 @@ class SettingsPanel(Gtk.Window):
         self.show_all()
 
     def on_apply(self, _):
-        # 1) Atalho
+        # 1) Atalho (helper mescla na lista — não apaga atalhos do usuário)
         binding = self.hotkey.current_binding()
-        if binding and binding != gsettings_get("binding"):
-            gsettings_set("name", "FrancosVox Ditado")
-            gsettings_set("command", os.path.expanduser("~/.local/bin/francosvox-toggle"))
-            gsettings_set("binding", binding)
-            gsettings_set("custom-keybindings",
-                          "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/']",
-                          base=GNOME_CUSTOMS)
+        if binding and binding != keybinding_get():
+            keybinding_set(binding)
 
         # 2) Idioma de entrada + saída
         src = LANGUAGES[self.lang.get_active()][0]

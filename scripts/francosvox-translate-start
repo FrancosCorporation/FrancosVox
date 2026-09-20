@@ -24,9 +24,13 @@ fi
 setsid nohup timeout 7200 "$BIN" --host 127.0.0.1 --port 5000 \
     > "$LOG" 2>&1 < /dev/null &
 
-# Watchdog de ociosidade: mata o servidor após 10 min sem pedidos (libera RAM)
+# Watchdog de ociosidade: mata o servidor após 10 min sem pedidos (libera RAM).
+# O comentário com o nome do watchdog fica no cmdline do `bash -c` — é o que o
+# pgrep abaixo procura. Sem ele (era o caso) o pgrep nunca casava e um watchdog
+# novo era criado a cada chamada.
 if ! pgrep -f "$WATCHDOG" >/dev/null 2>&1; then
     setsid nohup bash -c '
+        # francosvox-translate-watchdog
         IDLE_S=600
         while pgrep -f "libretranslate --host 127.0.0.1" >/dev/null 2>&1; do
             now=$(date +%s)

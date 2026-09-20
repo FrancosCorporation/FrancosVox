@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""francosvox-keybinding — Gerencia o atalho global do FrancosVox no GNOME
+SEM apagar os outros atalhos personalizados do usuário.
+
+O painel e o setup usavam `gsettings set ... custom-keybindings "[...custom0]"`,
+o que substituía a lista inteira e removia qualquer atalho custom que o usuário
+tivesse criado. Aqui a lista é mesclada: reaproveita o slot que já aponta para o
+francosvox-toggle ou usa o primeiro slot livre (custom0, custom1, ...).
+
+Uso:
+  francosvox-keybinding get          # imprime o binding atual (vazio se não existe)
+  francosvox-keybinding set <binding>  # ex.: "<Ctrl><Shift>space"
+"""
+import os
+import sys
+
+SCHEMA = "org.gnome.settings-daemon.plugins.media-keys"
+# Schema relocável de cada slot (id próprio, exigido pelo Gio.Settings)
+SCHEMA_SLOT = "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding"
+PREFIX = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/"
+TOGGLE_CMD = os.path.expanduser("~/.local/bin/francosvox-toggle")
+NAME = "FrancosVox Ditado"
+DEFAULT_BINDING = "<Ctrl><Shift>space"
+
+
+def gio():
+    import gi
+
+    gi.require_version("Gio", "2.0")
+    from gi.repository import Gio
+
+    return Gio
+
+
+def root_settings():
+    return gio().Settings.new(SCHEMA)
+
+
+def slot_settings(path):
+    return gio().Settings.new_with_path(SCHEMA_SLOT, path)
+
+
+def is_ours(path):
+    try:
+        cmd = slot_settings(path).get_string("command")
+    except Exception:
+        return False
+    return "francosvox-toggle" in cmd or "voxtype-toggle" in cmd
+
+
+def find_slot(paths):
+    """Reaproveita o slot do FrancosVox; senão, o primeiro customN livre."""
+    for path in paths:
+        if is_ours(path):
+            return path
+    used = set()
+    for path in paths:
+        tail = path.rstrip("/").rsplit("/", 1)[-1]
+        if tail.startswith("custom") and tail[6:].isdigit():
+            used.add(int(tail[6:]))
+    i = 0
+    while i in used:
+        i += 1
+    return f"{PREFIX}custom{i}/"
+
+
+def current_binding():
+    for path in root_settings().get_strv("custom-keybindings"):
+        if is_ours(path):
+            return slot_settings(path).get_string("binding")
+    return ""
+
+
+def set_binding(binding):
+    root = root_settings()
+    paths = list(root.get_strv("custom-keybindings"))
+    slot = find_slot(paths)
+    if slot not in paths:
+        paths.append(slot)
+        root.set_strv("custom-keybindings", paths)
+    settings = slot_settings(slot)
+    settings.set_string("name", NAME)
+    settings.set_string("command", TOGGLE_CMD)
+    settings.set_string("binding", binding)
+
+
+def main():
+    args = sys.argv[1:]
+    if not args or args[0] == "get":
+        print(current_binding())
+        return 0
+    if args[0] == "set" and len(args) > 1:
+        set_binding(args[1])
+        return 0
+    print(__doc__.strip(), file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except Exception as e:
+        print(f"francosvox-keybinding: {e}", file=sys.stderr)
+        sys.exit(1)
