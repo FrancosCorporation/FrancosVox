@@ -1,3 +1,9 @@
+# voxtype-br
+
+## ℹ️ Sobre este repositório
+
+Ferramenta de ditado/voz para PT-BR.
+
 <p align="center">
   <img src="docs/imgs/voxtype-hero.png" alt="FrancosVox em ação" width="720"/>
 </p>
