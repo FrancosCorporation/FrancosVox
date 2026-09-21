@@ -49,12 +49,13 @@ cp "$ROOT_DIR/bin/francosvox-osd" ~/.local/bin/francosvox-osd
 cp "$ROOT_DIR/scripts/francosvox-toggle" ~/.local/bin/francosvox-toggle
 cp "$ROOT_DIR/scripts/francosvox-type" ~/.local/bin/francosvox-type
 cp "$ROOT_DIR/scripts/francosvox-settings" ~/.local/bin/francosvox-settings
+cp "$ROOT_DIR/scripts/francosvox-start" ~/.local/bin/francosvox-start
 cp "$ROOT_DIR/scripts/francosvox-keybinding" ~/.local/bin/francosvox-keybinding
 cp "$ROOT_DIR/scripts/francosvox-keys-reset" ~/.local/bin/francosvox-keys-reset
 cp "$ROOT_DIR/scripts/francosvox-tray" ~/.local/bin/francosvox-tray
 cp "$ROOT_DIR/scripts/francosvox-translate-start" ~/.local/bin/francosvox-translate-start
 cp "$ROOT_DIR/scripts/notify-send-shim" ~/.local/bin/notify-send
-chmod +x ~/.local/bin/francosvox-osd ~/.local/bin/francosvox-toggle ~/.local/bin/francosvox-type ~/.local/bin/francosvox-settings ~/.local/bin/francosvox-keybinding ~/.local/bin/francosvox-keys-reset ~/.local/bin/francosvox-tray ~/.local/bin/francosvox-translate-start ~/.local/bin/notify-send
+chmod +x ~/.local/bin/francosvox-osd ~/.local/bin/francosvox-toggle ~/.local/bin/francosvox-type ~/.local/bin/francosvox-settings ~/.local/bin/francosvox-start ~/.local/bin/francosvox-keybinding ~/.local/bin/francosvox-keys-reset ~/.local/bin/francosvox-tray ~/.local/bin/francosvox-translate-start ~/.local/bin/notify-send
 
 # Limpeza de nomes antigos (voxtype-*) + symlink exigido pelo daemon:
 # o binário do Voxtype procura o OSD pelo nome hardcoded "voxtype-osd" no PATH.

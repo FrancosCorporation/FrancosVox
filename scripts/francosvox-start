@@ -11,6 +11,10 @@ VULKAN_CANDIDATES=(
     "$HOME/.local/lib/voxtype/voxtype-vulkan"
 )
 
+# Se algo falhar no meio (ex.: ydotoold fora do ar), a bandeja ficaria em
+# "⟳ reiniciando" para sempre — o trap sempre limpa a flag ao sair.
+trap 'rm -f "$RUNTIME_DIR/restarting"' EXIT
+
 info()  { echo "ℹ️  $*"; }
 ok()    { echo "✅ $*"; }
 warn()  { echo "⚠️  $*"; }
@@ -133,8 +137,7 @@ if [ -x "$HOME/.local/bin/francosvox-translate-start" ]; then
     bash "$HOME/.local/bin/francosvox-translate-start"
 fi
 
-# Daemon pronto: avisa a bandeja (sai do modo loading "⟳")
-rm -f "$RUNTIME_DIR/restarting"
+# Daemon pronto: o trap no topo já remove a flag "restarting" ao sair
 
 echo ""
 echo "   Atalho: Ctrl+Shift+Espaço (1ª = grava, 2ª = cola no cursor)"

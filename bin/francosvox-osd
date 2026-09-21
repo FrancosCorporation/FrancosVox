@@ -377,13 +377,19 @@ class VoxtypeOSD:
     def on_tick(self):
         self.tick += 1
         self.phase += 0.14
+        active = (self.state in ("recording", "streaming", "transcribing")
+                  or self.restarting)
         if self.state in ("recording", "streaming"):
             self.level += (self.raw_level - self.level) * SMOOTHING
         elif self.state == "transcribing":
             self.level = 0.5 + 0.2 * math.sin(self.tick * 0.12)
         else:
             self.level *= 0.9
-        self.area.queue_draw()
+        # Em idle NÃO redesenha: a janela fica transparente e o processo não
+        # gasta ~5% de CPU desenhando 30fps à toa. Enquanto o nível decai sai
+        # o frame que limpa a pílula; quando zera, para de desenhar de vez.
+        if active or self.level > 0.01:
+            self.area.queue_draw()
         return True
 
 
