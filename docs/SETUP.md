@@ -56,14 +56,18 @@ O modelo (~1.6 GB) fica em `~/.local/share/voxtype/models/ggml-large-v3-turbo.bi
 
 ---
 
-## 4. Configuração pt-BR
+## 4. Aplicar a configuração FrancosVox
 
 ```bash
-mkdir -p ~/.config/voxtype
-cp config/config.toml ~/.config/voxtype/config.toml
+bash scripts/apply.sh
 ```
 
-Pontos-chave:
+O instalador cria o autostart, registra o atalho, instala o OSD e preserva os
+idiomas escolhidos no painel quando atualiza a configuração. A saída padrão é
+gravada em arquivo; `francosvox-toggle` aguarda o daemon voltar a `idle` e
+então entrega a transcrição ao campo selecionado.
+
+Pontos-chave da configuração do repositório:
 ```toml
 [whisper]
 model = "large-v3-turbo"
@@ -71,26 +75,32 @@ language = "pt"
 gpu_isolation = false   # sem recarregar o modelo a cada ditado
 
 [output]
-mode = "paste"          # Ctrl+V atômico: instantâneo e sem erro ABNT2
-paste_keys = "ctrl+v"
-driver_order = ["dotool", "ydotool", "clipboard"]  # sem wtype (GNOME não implementa)
-pre_type_delay_ms = 450 # tempo de soltar Ctrl+Shift e o foco voltar à caixa
+mode = "file"
+file_path = "/tmp/francosvox-transcript.txt"
+driver_order = ["ydotool", "clipboard"]
+pre_type_delay_ms = 800
 ```
+
+Não substitua `mode = "file"` por `paste` sem também reconfigurar o wrapper de
+atalho; o fluxo atual delega a inserção a `francosvox-toggle`.
 
 ---
 
 ## 5. Configurar o ydotool daemon
 
 O `ydotool` injeta texto via kernel (uinput) — funciona em **qualquer** compositor Wayland.
+O instalador configura o serviço `ydotoold` com socket `0600`, pertencente ao
+usuário atual, em vez de expor a injeção de teclas a todos os usuários locais.
+Para uma configuração manual temporária, use IDs numéricos e a mesma permissão:
 
 ```bash
-# ydotoold precisa de /dev/uinput → roda como root
-sudo nohup ydotoold -p /run/user/$UID/.ydotool_socket -o $UID:$UID -P 0666 > /tmp/ydotoold.log 2>&1 &
-
-# Verificar socket acessível ao usuário
-ls -la /run/user/$UID/.ydotool_socket
-# srw-rw-rw- 1 servidor servidor ... .ydotool_socket  ✓
+USER_UID="$(id -u)"
+USER_GID="$(id -g)"
+sudo nohup ydotoold -o "$USER_UID:$USER_GID" -P 0600 > /tmp/ydotoold.log 2>&1 &
+ls -l /tmp/.ydotool_socket
 ```
+
+Não use `0666`: o socket controla a injeção de teclado e mouse no desktop.
 
 > 💡 **Por que `wtype` não funciona no GNOME?** O wtype usa o protocolo
 > `zwp_virtual_keyboard_v1`, que o **GNOME não implementa**. O ydotool contorna
@@ -100,12 +110,8 @@ ls -la /run/user/$UID/.ydotool_socket
 
 ## 6. Instalar o OSD visual
 
-```bash
-cp bin/voxtype-osd ~/.local/bin/
-chmod +x ~/.local/bin/voxtype-osd
-```
-
-O Voxtype detecta e inicia o OSD automaticamente se estiver no `PATH`.
+`scripts/apply.sh` instala `bin/francosvox-osd` e cria o alias `voxtype-osd`
+que o daemon espera encontrar no `PATH`.
 O OSD é um **overlay na tela** (parte inferior central) com:
 - 🎙 speaker + ondas vermelhas animadas **conforme o volume da voz**
 - ⏳ "Transcrevendo..." em azul com borda pulsante
@@ -121,8 +127,8 @@ O OSD é um **overlay na tela** (parte inferior central) com:
 bash scripts/setup-gnome-shortcut.sh
 ```
 
-Isso cria um atalho personalizado: **Ctrl+Shift+Espaço → `voxtype-toggle`**
-(wrapper com debounce + trava durante a transcrição — veja `scripts/voxtype-toggle`)
+Isso registra **Ctrl+Shift+Espaço → `francosvox-toggle`** (wrapper com debounce,
+recuperação do daemon e trava durante a transcrição).
 
 Modo **toggle**:
 1. Clique no campo onde quer digitar
@@ -149,14 +155,14 @@ Modo **toggle**:
 sudo voxtype setup gpu --enable
 
 # 2. Inicia com o script (ele executa /usr/lib/voxtype/voxtype-vulkan diretamente)
-bash scripts/voxtype-start
+bash scripts/francosvox-start
 ```
 
-O script `voxtype-start` detecta e usa o binário Vulkan automaticamente, mesmo
+O script `francosvox-start` detecta e usa o binário Vulkan automaticamente, mesmo
 sem rodar o `setup gpu` (não precisa de sudo). Verifique que a GPU foi usada:
 
 ```bash
-tail -f /tmp/voxtype.log
+tail -f /tmp/francosvox.log
 # ggml_vulkan: 0 = AMD Radeon RX 6750 XT (RADV NAVI22) (radv)
 # whisper_init_with_params_no_state: use gpu = 1
 ```
@@ -167,21 +173,10 @@ Para voltar para CPU: `sudo voxtype setup gpu --disable`
 
 ## 9. Autostart (automático pelo apply.sh)
 
-O `scripts/apply.sh` já instala dois autostarts no login:
-- `voxtype.desktop` → inicia o **daemon** (o atalho nunca mais fica morto após reboot)
-- `voxtype-update.desktop` → puxa novidades do GitHub e reaplica sozinho
-
-Para instalar manualmente (se não usou o apply.sh):
-
-```bash
-cat > ~/.config/autostart/voxtype.desktop << 'EOF'
-[Desktop Entry]
-Type=Application
-Name=Voxtype
-Exec=/home/SEU_USUARIO/Git/voxtype-br/scripts/voxtype-start
-X-GNOME-Autostart-enabled=true
-EOF
-```
+O `scripts/apply.sh` instala quatro autostarts no login: daemon, atualização do
+repositório, indicador da bandeja e tradutor local. Para recriá-los, rode
+`bash scripts/apply.sh`; não copie um `.desktop` manual antigo com caminhos de
+usuário fixos. O daemon usa `scripts/francosvox-start` e aguarda o `ydotoold`.
 
 ---
 
@@ -198,6 +193,8 @@ voxtype record toggle   # para e transcreve
 # 3. O texto aparece no cursor (ou no clipboard como fallback)
 ```
 
+O log atual do wrapper fica em `/tmp/francosvox.log`.
+
 ---
 
 ## ✅ Checklist final
@@ -207,5 +204,5 @@ voxtype record toggle   # para e transcreve
 - [ ] `dotool_xkb_layout = "br"` no config
 - [ ] `ydotoold` rodando + socket acessível
 - [ ] Atalho `Ctrl+Shift+Espaço` configurado no GNOME
-- [ ] `sudo voxtype setup gpu --enable` ou `voxtype-start` → log mostra Vulkan device
-- [ ] `voxtype-osd` no `PATH`
+- [ ] `sudo voxtype setup gpu --enable` ou `francosvox-start` → log mostra Vulkan device
+- [ ] `francosvox-osd` e o alias `voxtype-osd` estão em `~/.local/bin/`

@@ -16,7 +16,7 @@ como `;` → `:`, e acentos/`ç` saem errados.
 dotool_xkb_layout = "br"
 ```
 
-Depois reinicie: `bash scripts/voxtype-start`
+Depois reinicie: `bash scripts/francosvox-start`
 
 ---
 
@@ -28,7 +28,7 @@ cai no fallback de clipboard + notificação.
 
 **Diagnóstico:**
 ```bash
-tail -30 /tmp/voxtype.log
+tail -30 /tmp/francosvox.log
 # wtype failed: Compositor does not support the virtual keyboard protocol
 ```
 
@@ -40,7 +40,8 @@ driver_order = ["ydotool", "clipboard"]
 
 E garantir o daemon do ydotool rodando:
 ```bash
-sudo nohup ydotoold -o $USER:$USER -P 0666 > /tmp/ydotoold.log 2>&1 &
+sudo systemctl restart ydotoold
+ls -l /tmp/.ydotool_socket
 ```
 
 ---
@@ -56,7 +57,7 @@ sudo nohup ydotoold -o $USER:$USER -P 0666 > /tmp/ydotoold.log 2>&1 &
 sudo voxtype setup gpu --enable
 ```
 
-Ou use o `scripts/voxtype-start`, que executa `/usr/lib/voxtype/voxtype-vulkan`
+Ou use o `scripts/francosvox-start`, que executa `/usr/lib/voxtype/voxtype-vulkan`
 diretamente (sem sudo).
 
 Confira no log:
@@ -93,8 +94,9 @@ ls ~/.local/bin/voxtype-osd
 
 **Fix:**
 ```bash
-cp bin/voxtype-osd ~/.local/bin/
-chmod +x ~/.local/bin/voxtype-osd
+cp bin/francosvox-osd ~/.local/bin/francosvox-osd
+ln -sf francosvox-osd ~/.local/bin/voxtype-osd
+chmod +x ~/.local/bin/francosvox-osd
 export PATH="$HOME/.local/bin:$PATH"   # adicione ao ~/.bashrc
 ```
 
@@ -117,7 +119,9 @@ sudo apt install python3-cairo
 
 **Fix:** rodar como root (recomendado para uso desktop):
 ```bash
-sudo nohup ydotoold -p /run/user/$UID/.ydotool_socket -o $UID:$UID -P 0666 > /tmp/ydotoold.log 2>&1 &
+sudo systemctl restart ydotoold
+systemctl status ydotoold --no-pager
+ls -l /tmp/.ydotool_socket
 ```
 
 Alternativa sem root (exige logout): adicionar ao grupo `input`:
@@ -133,7 +137,7 @@ sudo usermod -aG input $USER
 **Causa:** o hotkey embutido usa evdev (`/dev/input/`) e o usuário não está no
 grupo `input` (só ativa após logout).
 
-**Fix:** usar atalho do GNOME apontando para `voxtype record toggle`:
+**Fix:** usar o atalho do projeto, que chama `francosvox-toggle`:
 ```bash
 bash scripts/setup-gnome-shortcut.sh
 ```
@@ -148,18 +152,18 @@ não na que estava focada quando você começou a gravar. Se a transcrição dem
 caminho, o texto cai lá.
 
 **O que este repo já faz por você:**
-- OSD no **topo da tela** (nunca cobre a caixa de diálogo) + **click-through**
-  (cliques atravessam) + nunca rouba o foco — a seleção do campo se mantém.
-- `mode = "paste"`: colagem atômica via Ctrl+V (instantânea; o modo `type`
+- OSD na **parte inferior central**; pode se sobrepor ao conteúdo, mas é click-through
+  e não recebe foco.
+- `mode = "file"`: a transcrição vai para arquivo; `francosvox-toggle` chama o helper de saída após o daemon voltar a idle. A inserção usa clipboard + Ctrl+V (o modo `type`
   tecla por tecla é lento e qualquer clique no meio joga o resto na janela errada).
-- `pre_type_delay_ms = 450`: espera você soltar o Ctrl+Shift e o foco assentar.
+- `pre_type_delay_ms = 800`: espera você soltar o Ctrl+Shift e o foco assentar.
 - `driver_order` sem `wtype` (nunca funciona no GNOME; só atrasava e poluía o log).
-- Atalho via `voxtype-toggle`: ignora toques durante a transcrição (em vez de
+- Atalho via `francosvox-toggle`: ignora toques durante a transcrição (em vez de
   parecer "travado") e tem debounce contra disparo duplo.
 
 **Fluxo correto:**
 1. Clique no campo onde quer digitar
-2. `Ctrl+Shift+Espaço` → grava (OSD vermelho no topo)
+2. `Ctrl+Shift+Espaço` → grava (OSD vermelho na parte inferior central)
 3. `Ctrl+Shift+Espaço` → transcreve (OSD azul) e cola **sem clicar em outro
    lugar até o OSD sumir**
 4. Se caiu na janela errada: clique na caixa certa e dê `Ctrl+V` — a transcrição
@@ -205,7 +209,7 @@ nem cola o texto.
    ```bash
    voxtype status              # "not running"?
    ls -la /run/user/$UID/voxtype/voxtype.lock
-   tail -50 /tmp/voxtype.log   # se o daemon morreu, veja o motivo
+   tail -50 /tmp/francosvox.log   # se o daemon morreu, veja o motivo
    ```
 
 3. **Estado travado em "transcribing"** — se uma transcrição anterior travou,
@@ -213,10 +217,10 @@ nem cola o texto.
    acontece. Resete:
    ```bash
    echo idle > /run/user/$UID/voxtype/state
-   bash scripts/voxtype-start   # reinicia o daemon limpo
+   bash scripts/francosvox-start   # reinicia o daemon limpo
    ```
 
-4. **Duas instâncias do daemon** — o `voxtype-start` já mata as antigas pelo
+4. **Duas instâncias do daemon** — o `francosvox-start` já mata as antigas pelo
    lockfile; se você roda o daemon via systemd **e** pelo script ao mesmo tempo,
    pode haver conflito. Prefira um só método de inicialização.
 
@@ -235,11 +239,11 @@ colando na janela errada porque você já clicou em outro lugar.
 **Fix:**
 ```bash
 sudo apt remove wtype
-bash scripts/voxtype-start   # reinicia o daemon
+bash scripts/francosvox-start   # reinicia o daemon
 ```
 
 Depois disso a colagem é via **ydotool** e leva ~1,5s (confira com
-`tail -f /tmp/voxtype.log` — "Text pasted via clipboard + ctrl+v" logo após
+`tail -f /tmp/francosvox.log` — "Text pasted via clipboard + ctrl+v" logo após
 "Transcribed").
 
 ---
@@ -251,6 +255,6 @@ voxtype config        # mostra configuração ativa
 voxtype status        # estado do daemon (idle/recording/transcribing)
 voxtype setup check   # diagnóstico completo do sistema
 voxtype record toggle # gravar/parar manualmente
-tail -f /tmp/voxtype.log  # logs do daemon
+tail -f /tmp/francosvox.log  # logs do daemon
 tail -f /tmp/ydotoold.log # logs do ydotool
 ```

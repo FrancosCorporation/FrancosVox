@@ -64,7 +64,8 @@ fi
 
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 USER_NAME="$(id -un)"
-USER_GROUP="$(id -gn)"
+USER_UID="$(id -u)"
+USER_GID="$(id -g)"
 info "Usuário: $USER_NAME | Repo: $ROOT_DIR"
 
 need_sudo
@@ -140,15 +141,15 @@ Description=ydotool daemon (injeção de teclas — FrancosVox)
 After=systemd-user-sessions.service
 
 [Service]
-ExecStart=/usr/bin/ydotoold -o $USER_NAME:$USER_GROUP -P 0666
+ExecStart=/usr/bin/ydotoold -o $USER_UID:$USER_GID -P 0600
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 EOF
 sudo systemctl daemon-reload
-sudo systemctl enable --now ydotoold >/dev/null 2>&1
-systemctl is-active ydotoold >/dev/null 2>&1 || sudo systemctl start ydotoold
+sudo systemctl enable ydotoold >/dev/null 2>&1 || die "Falha ao habilitar ydotoold"
+sudo systemctl restart ydotoold >/dev/null 2>&1 || sudo systemctl start ydotoold || die "Falha ao iniciar ydotoold"
 ok "ydotoold ativo como serviço do sistema."
 
 # ---------------------------------------------------------------------------

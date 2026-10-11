@@ -123,8 +123,8 @@ case "$state" in
         ;;
     idle|stopped|"")
         # 1º toque: começa a gravar. Se o daemon não estiver pronto (reboot),
-        # inicia antes. O foco permanece onde está (o OSD fica no topo e é
-        # click-through) — não precisa reclicar na caixa de diálogo.
+        # inicia antes. O OSD fica no centro inferior, sem receber foco e com
+        # input click-through; ainda assim, ele pode se sobrepor ao conteúdo.
         if ! ensure_daemon; then
             # Libera o debounce: o usuário pode tentar de novo na hora
             rm -f "$DEBOUNCE_FILE" 2>/dev/null || true

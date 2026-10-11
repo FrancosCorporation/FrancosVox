@@ -45,10 +45,10 @@ sistema de ditado completo para **Português do Brasil**:
 | Problema do Voxtype original | Solução do FrancosVox |
 |---|---|
 | Modelo `.en` — transcrição ruim em pt-BR | `large-v3-turbo` + `language = "pt"` (multilíngue) |
-| Transcrição na CPU demora 70s+ | **GPU Vulkan** (AMD/NVIDIA/Intel) — 6,5s de áudio transcritos em **~0,7s** |
+| Transcrição na CPU demora 70s+ | **GPU Vulkan** (AMD/NVIDIA/Intel) reduz bastante o tempo; em um teste local com RX 6750 XT, 6,5s de áudio levaram **~0,7s** |
 | `wtype` falha no GNOME Wayland ("virtual keyboard protocol not supported") e **travava a colagem por ~1 minuto** | `wtype` removido; colagem via **ydotool + clipboard** em ~1,5s |
 | Sem feedback visual de gravação | **OSD na tela**: speaker + onda senoidal animada conforme o volume da voz |
-| Texto cola na janela errada | OSD **click-through, sem foco** (`accept_focus=False`), nunca rouba a caixa de diálogo |
+| Texto cola na janela errada | OSD **click-through e sem foco** (`accept_focus=False`); mantenha a caixa selecionada até o fim da transcrição |
 | Teclas ABNT2 saem trocadas (`;` vira `:`) | Colagem **atômica via Ctrl+V** (nenhuma tecla é digitada) |
 | Atalho morto após o reboot | **Autostart do daemon** no login + atalho que **auto-recupera** o daemon |
 | 2º toque ignorado / disparo duplo | Wrapper `francosvox-toggle` com debounce e trava durante a transcrição |
@@ -62,8 +62,8 @@ sistema de ditado completo para **Português do Brasil**:
 
 ## 🖥️ Demonstração
 
-O OSD fica ancorado na **parte inferior central** da tela — pequeno, nunca cobre
-a caixa de diálogo e **não rouba o foco**:
+O OSD fica ancorado na **parte inferior central** da tela e **não rouba o foco**.
+Ele pode se sobrepor ao conteúdo atrás dele, mas é pequeno e click-through:
 
 - 🔴 **Ouvindo** — o speaker pulsa e a onda cresce conforme o volume da sua voz
 - 🔵 **Transcrevendo** — borda azul pulsante + onda animada
@@ -92,7 +92,7 @@ a caixa de diálogo e **não rouba o foco**:
 | `scripts/install.sh` | **Instalador completo em 1 comando** (deps + Voxtype + modelo + tradutor + ydotoold + apply) |
 | `scripts/apply.sh` | Sincroniza o repo → sistema (config, OSD, atalho, autostarts, menu) — **preserva seus idiomas** ao atualizar |
 | `scripts/francosvox-autoupdate.sh` | Auto-update no login (pull + apply) |
-| `whisper-http-server.js` | API HTTP `/transcribe` (opcional, para integrações) |
+| `whisper-http-server.js` | API HTTP `/transcribe` opcional; loopback por padrão, token obrigatório para bind externo |
 
 ---
 
@@ -166,8 +166,14 @@ argospm install translate-en_fr translate-en_de translate-en_it
 
 ```bash
 sudo usermod -aG input $USER   # acesso ao /dev/uinput (logout/login)
-sudo nohup ydotoold -o $USER:$USER -P 0666 > /tmp/ydotoold.log 2>&1 &
+USER_UID="$(id -u)"
+USER_GID="$(id -g)"
+sudo nohup ydotoold -o "$USER_UID:$USER_GID" -P 0600 > /tmp/ydotoold.log 2>&1 &
 ```
+
+O socket fica acessível somente ao usuário dono. O instalador configura essa
+permissão automaticamente; evite `0666`, que permitiria a qualquer usuário
+local injetar teclas no desktop.
 
 ### 4. GPU (opcional, recomendado)
 
@@ -191,7 +197,8 @@ whisper_init_with_params_no_state: use gpu = 1
 5. Se cair na janela errada: clique na caixa certa e dê `Ctrl+V` (o texto continua no clipboard)
 
 > Durante a transcrição **não clique em outro lugar** — o texto cola na janela
-> focada no momento da colagem.
+> focada no momento da colagem. O OSD não recebe foco, mas pode se sobrepor ao
+> conteúdo que estiver atrás dele na parte inferior central da tela.
 
 ---
 
@@ -218,6 +225,12 @@ file_path = "/tmp/francosvox-transcript.txt"
 > espanhol direto, francês/alemão/italiano via inglês (pt→en→fr, etc.).
 > Ao aplicar uma mudança, o OSD mostra **"Reiniciando…"** (anel girando na
 > pílula) e o ícone da barra superior vira **⟳** até o servidor voltar.
+
+### API HTTP opcional
+
+O servidor de integração escuta em `127.0.0.1:3003` por padrão e aceita apenas
+WAV em base64 de até 20 MiB. Veja [docs/API.md](docs/API.md) para o formato de
+requisição e a configuração de token exigida ao escutar em outra interface.
 
 ---
 
