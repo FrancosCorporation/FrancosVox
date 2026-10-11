@@ -77,8 +77,8 @@ global `Ctrl+Shift+Espaço`.
 - [x] Gerar screenshots/GIF: recording (onda animada) + transcribing + hero mockup
 - [x] Atualizar `docs/SETUP.md` e `docs/TROUBLESHOOTING.md` (wtype removido, OSD overlay, autostart)
 - [x] Verificar `config.toml` sem dados pessoais: contém apenas idiomas, modelo e caminhos genéricos
-- [ ] `git push` para `origin` (FrancosCorporation/voxtype-br)
-- [ ] Conferir o README renderizado no GitHub
+- [x] `git push` para `origin/Version-1.0` (FrancosCorporation/FrancosVox)
+- [x] Conferir o README renderizado no GitHub no branch `Version-1.0`
 - [x] Release/tag não necessária para esta revisão; a release existente `v1.1.0` não foi alterada
 
 ---
@@ -87,11 +87,11 @@ global `Ctrl+Shift+Espaço`.
 
 - [x] Fase 1 concluída — diagnóstico completo
 - [x] Fase 2 concluída — correções (inclui fix do stall de colagem de ~50s: remoção do wtype + limpeza do clipboard)
-- [ ] Fase 3 em andamento — documentação atualizada; commit, push e conferência online pendentes
+- [x] Fase 3 concluída — documentação revisada, push publicado e README conferido online
 
 ## Atualização de implementação — 2026-10-11
 
 - O instalador agora configura o socket privilegiado do `ydotoold` com dono UID/GID numéricos e permissão `0600`; os comandos manuais dos guias seguem o mesmo padrão.
 - A API opcional `/transcribe` permanece no loopback por padrão; binds externos exigem `WHISPER_TOKEN` com pelo menos 32 bytes. Limites de corpo/fila, validação estrita de WAV, temporário `0600` e erros genéricos foram adicionados.
 - README, guia de setup e troubleshooting alinhados aos nomes atuais, `mode = "file"`, espera de 800 ms e posição real do OSD. O benchmark de GPU está identificado como resultado de um teste local, não como tempo universal.
-- `config/config.toml` foi revisado e não contém dados pessoais. Revisão online do README e push ainda pendentes.
+- `config/config.toml` foi revisado e não contém dados pessoais. Commit `1a5d115` enviado a `origin/Version-1.0`; README renderizado conferido no GitHub.
