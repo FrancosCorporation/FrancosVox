@@ -29,14 +29,16 @@ jobs:
         run: |
           python -m compileall -q bin docs scripts
           while IFS= read -r f; do
-            head -1 "$f" | grep -q python && python -m py_compile "$f"
+            if head -1 "$f" | grep -q python; then python -m py_compile "$f" || exit 1; fi
           done < <(find bin scripts -type f ! -name '*.py' ! -name '*.pyc' ! -path '*__pycache__*')
+          echo "python-shebang scripts OK"
       - name: Syntax do servidor Whisper (Node)
         run: node --check whisper-http-server.js
       - name: bash -n apenas em scripts shell (pela shebang)
         run: |
           while IFS= read -r f; do
-            head -1 "$f" | grep -qE '^#!.*(ba|da|z)?sh' && bash -n "$f" && echo "OK: $f"
+            if head -1 "$f" | grep -qE '^#!.*(ba|da|z)?sh'; then bash -n "$f" && echo "OK: $f" || exit 1; fi
           done < <(find bin scripts -type f ! -name '*.py' ! -name '*.pyc' ! -path '*__pycache__*')
+          echo "shell scripts OK"
       - name: Checagem de diff
         run: git diff --check HEAD
