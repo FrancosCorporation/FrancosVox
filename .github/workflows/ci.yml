@@ -1,0 +1,42 @@
+name: Static validation
+
+on:
+  push:
+    branches: [Version-1.0]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: static (Python 3.13 / Node 24)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Sintaxe Python (módulos e scripts sem extensão, pela shebang)
+        run: |
+          python -m compileall -q bin docs scripts
+          while IFS= read -r f; do
+            head -1 "$f" | grep -q python && python -m py_compile "$f"
+          done < <(find bin scripts -type f ! -name '*.py' ! -name '*.pyc' ! -path '*__pycache__*')
+      - name: Syntax do servidor Whisper (Node)
+        run: node --check whisper-http-server.js
+      - name: bash -n apenas em scripts shell (pela shebang)
+        run: |
+          while IFS= read -r f; do
+            head -1 "$f" | grep -qE '^#!.*(ba|da|z)?sh' && bash -n "$f" && echo "OK: $f"
+          done < <(find bin scripts -type f ! -name '*.py' ! -name '*.pyc' ! -path '*__pycache__*')
+      - name: Checagem de diff
+        run: git diff --check HEAD
