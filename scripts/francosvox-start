@@ -5,6 +5,9 @@ set -e
 
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/voxtype"
 VOXTYPE_BIN="/usr/bin/voxtype"
+MODEL_NAME="large-v3-turbo"
+MODEL_FILE="$HOME/.local/share/voxtype/models/ggml-${MODEL_NAME}.bin"
+MODEL_DOWNLOAD_LOG="/tmp/francosvox-model-download.log"
 VULKAN_CANDIDATES=(
     "/usr/lib/voxtype/voxtype-vulkan"
     "/usr/local/lib/voxtype/voxtype-vulkan"
@@ -32,6 +35,49 @@ export XKB_DEFAULT_VARIANT=abnt2
 if ! pgrep -x ydotoold >/dev/null 2>&1; then
     warn "ydotoold não está rodando. Inicie-o primeiro (sudo ydotoold &)" >&2
     exit 1
+fi
+
+# O modelo é obrigatório para transcrever. Repare uma remoção/interrupção
+# baixando-o no próximo login ou quando o daemon for iniciado manualmente.
+# O lock evita que autostart e atalho iniciem downloads simultâneos.
+if [ ! -s "$MODEL_FILE" ]; then
+    if ! command -v voxtype >/dev/null 2>&1; then
+        warn "Voxtype não está instalado; não é possível baixar o modelo." >&2
+        exit 1
+    fi
+    if ! command -v flock >/dev/null 2>&1; then
+        warn "O comando flock não está disponível; não é seguro iniciar o download automático." >&2
+        exit 1
+    fi
+    mkdir -p "$RUNTIME_DIR" "$(dirname "$MODEL_FILE")"
+    exec 9>"$RUNTIME_DIR/model-download.lock"
+    if ! flock -n 9; then
+        info "Outro processo já está verificando/baixando o modelo; aguardando..."
+        flock 9
+    fi
+    if [ ! -s "$MODEL_FILE" ]; then
+        warn "Modelo $MODEL_NAME ausente; baixando (~1,6 GB). O primeiro início pode demorar."
+        if command -v notify-send >/dev/null 2>&1; then
+            notify-send -a FrancosVox -u low -t 5000 "FrancosVox" \
+                "Modelo de voz ausente. Baixando ~1,6 GB; o primeiro início pode demorar." 2>/dev/null || true
+        fi
+        if ! voxtype setup --download --model "$MODEL_NAME" >"$MODEL_DOWNLOAD_LOG" 2>&1; then
+            tail -n 40 "$MODEL_DOWNLOAD_LOG" >&2 || true
+            warn "Falha ao baixar o modelo. Verifique a conexão e tente iniciar novamente." >&2
+            exit 1
+        fi
+    fi
+    if [ ! -s "$MODEL_FILE" ]; then
+        warn "Download terminou sem criar $MODEL_FILE; reconhecimento não iniciado." >&2
+        exit 1
+    fi
+    flock -u 9
+    exec 9>&-
+    ok "Modelo $MODEL_NAME disponível."
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send -a FrancosVox -u low -t 3000 "FrancosVox" \
+            "Modelo pronto. O reconhecimento de voz vai iniciar." 2>/dev/null || true
+    fi
 fi
 
 # Para o daemon do voxtype caso esteja rodando como systemd user service

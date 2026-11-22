@@ -231,6 +231,7 @@ file_path = "/tmp/francosvox-transcript.txt"
 | Sintoma | Causa / Fix |
 |---|---|
 | Atalho não faz nada após reboot | O daemon não subiu — o atalho agora **inicia sozinho** (`francosvox-toggle`); ou rode `bash scripts/francosvox-start` |
+| Modelo de voz ausente após falha/reinício | No próximo início, `francosvox-start` baixa automaticamente `large-v3-turbo` (~1,6 GB); acompanhe em `tail -f /tmp/francosvox-model-download.log` |
 | Texto não cola na caixa | O ydotool desta versão **não injeta combinações nomeadas** (`key ctrl+shift+v`) — use keycodes brutos (`29:1 42:1 47:1 47:0 42:0 29:0`), já configurado |
 | Texto cai em outra janela | O OSD ficava mapeando/desmapeando (mexia no foco) — agora fica sempre mapeado e transparente no idle |
 | Teclas presas (Ctrl travado) | Injeção interrompida no meio — rode `bash francosvox-keys-reset` para liberar |

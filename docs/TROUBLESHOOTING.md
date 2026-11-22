@@ -244,7 +244,37 @@ Depois disso a colagem é via **ydotool** e leva ~1,5s (confira com
 
 ---
 
-## 13. Comandos úteis
+## 13. Modelo de voz ausente
+
+O modelo `large-v3-turbo` é necessário para transcrever e ocupa cerca de 1,6 GB.
+O `francosvox-start`, usado no login e no reinício manual, verifica o arquivo
+`~/.local/share/voxtype/models/ggml-large-v3-turbo.bin` antes de iniciar o
+daemon. Se estiver ausente ou vazio, baixa-o com `voxtype setup` e só continua
+quando o arquivo estiver disponível. No primeiro início após a perda do modelo,
+o download pode demorar conforme a conexão; o atalho avisa e aguarda até 20 min.
+
+Para acompanhar ou diagnosticar:
+
+```bash
+ls -lh ~/.local/share/voxtype/models/ggml-large-v3-turbo.bin
+tail -f /tmp/francosvox.log
+tail -f /tmp/francosvox-model-download.log
+voxtype status
+```
+
+O log de download deve terminar com `Setup complete`; o log do daemon deve
+mostrar `Model loaded, ready for voice input`. Se aparecer falha de download,
+confira a conexão e execute novamente:
+
+```bash
+bash ~/.local/bin/francosvox-start
+```
+
+O script não inicia reconhecimento sem o arquivo. Se ele existir mas o log
+indicar erro ao carregá-lo, o arquivo pode estar incompleto ou corrompido;
+consulte o log antes de qualquer ação manual no arquivo.
+
+## 14. Comandos úteis
 
 ```bash
 voxtype config        # mostra configuração ativa

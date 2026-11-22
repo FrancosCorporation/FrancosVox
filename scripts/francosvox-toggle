@@ -20,6 +20,7 @@ RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/voxtype"
 STATE_FILE="$RUNTIME_DIR/state"
 DEBOUNCE_FILE="$RUNTIME_DIR/toggle.debounce"
 DEBOUNCE_MS=1200
+MODEL_FILE="$HOME/.local/share/voxtype/models/ggml-large-v3-turbo.bin"
 
 VOXTYPE_BIN="$(command -v voxtype 2>/dev/null || echo /usr/bin/voxtype)"
 
@@ -69,13 +70,19 @@ ensure_daemon() {
         return 0
     fi
     notify "FrancosVox não estava rodando — iniciando…"
+    if [ ! -s "$MODEL_FILE" ]; then
+        notify "Modelo de voz ausente — baixando (~1,6 GB). Aguarde…"
+    fi
     if [ -n "$REPO_DIR" ] && [ -x "$REPO_DIR/scripts/francosvox-start" ]; then
         setsid bash "$REPO_DIR/scripts/francosvox-start" >/dev/null 2>&1 &
+    elif [ -x "$HOME/.local/bin/francosvox-start" ]; then
+        setsid bash "$HOME/.local/bin/francosvox-start" >/dev/null 2>&1 &
     else
         setsid "$VOXTYPE_BIN" daemon >/tmp/francosvox.log 2>&1 &
     fi
-    # Aguarda o daemon carregar o modelo e entrar em idle (turbo ~1s, large-v3 ~12s)
-    for _ in $(seq 1 60); do
+    # Pode levar minutos se o início precisar baixar novamente o modelo (~1,6 GB).
+    # Aguarda até 20 min para não reportar falha enquanto o download está ativo.
+    for _ in $(seq 1 2400); do
         if daemon_alive && [ "$(current_state)" = "idle" ]; then
             return 0
         fi
